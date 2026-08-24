@@ -1,0 +1,15 @@
+# Sensitive credentials & Environment files
+serviceAccountKey.json
+*.json.secret
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.db
+
+# Tooling
+graphify-out/
