@@ -14,13 +14,23 @@ load_dotenv()
 
 app = FastAPI(title="GGHS Chak No 493 JB API")
 
-# CORS middleware — allow frontend to communicate with this server
+# CORS middleware — allow frontend (GitHub Pages, localhost, etc.) to communicate with this server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://flopibet8.github.io",
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://127.0.0.1:8000",
+        "*"
+    ],
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
