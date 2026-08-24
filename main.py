@@ -6,6 +6,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 import json
+import base64
 from dotenv import load_dotenv
 
 # Load environment variables from .env if present
@@ -25,12 +26,23 @@ app.add_middleware(
 # ─────────────────────────────────────────────────────────────────────────────
 # Firebase Admin SDK Initialization
 # Supports:
-# 1. FIREBASE_CREDENTIALS_JSON env var (Full JSON string - ideal for Render/Railway/Heroku)
-# 2. FIREBASE_CREDENTIALS_PATH or GOOGLE_APPLICATION_CREDENTIALS env var (Path to file)
-# 3. Local serviceAccountKey.json file fallback
+# 1. FIREBASE_CREDENTIALS_BASE64 (Base64 string - 100% reliable for Railway/Cloud)
+# 2. FIREBASE_CREDENTIALS_JSON (Raw JSON string)
+# 3. FIREBASE_CREDENTIALS_PATH or GOOGLE_APPLICATION_CREDENTIALS (File path)
+# 4. Local serviceAccountKey.json file fallback
 # ─────────────────────────────────────────────────────────────────────────────
 def get_firebase_credentials():
-    # 1. Check if raw JSON string is provided in env var
+    # 1. Check Base64 encoded string (recommended for cloud to avoid quote escaping issues)
+    env_b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64")
+    if env_b64:
+        try:
+            decoded_json = base64.b64decode(env_b64.strip()).decode("utf-8")
+            cred_dict = json.loads(decoded_json)
+            return credentials.Certificate(cred_dict)
+        except Exception as e:
+            print(f"[Firebase Warning] Failed to parse FIREBASE_CREDENTIALS_BASE64: {e}")
+
+    # 2. Check if raw JSON string is provided in env var
     env_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
     if env_json:
         try:
@@ -39,19 +51,19 @@ def get_firebase_credentials():
         except Exception as e:
             print(f"[Firebase Warning] Failed to parse FIREBASE_CREDENTIALS_JSON: {e}")
 
-    # 2. Check if custom path is provided in env var
+    # 3. Check if custom path is provided in env var
     env_path = os.getenv("FIREBASE_CREDENTIALS_PATH") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     if env_path and os.path.exists(env_path):
         return credentials.Certificate(env_path)
 
-    # 3. Fallback to local serviceAccountKey.json in the same directory
+    # 4. Fallback to local serviceAccountKey.json in the same directory
     local_file = os.path.join(os.path.dirname(__file__), "serviceAccountKey.json")
     if os.path.exists(local_file):
         return credentials.Certificate(local_file)
 
     raise RuntimeError(
-        "Firebase credentials not found! Set FIREBASE_CREDENTIALS_JSON in environment variables "
-        "or place serviceAccountKey.json in the backend/ folder."
+        "Firebase credentials not found! Set FIREBASE_CREDENTIALS_BASE64 or FIREBASE_CREDENTIALS_JSON "
+        "in environment variables, or place serviceAccountKey.json in the backend/ folder."
     )
 
 if not firebase_admin._apps:
