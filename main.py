@@ -133,7 +133,7 @@ DEFAULT_ADMIN_CONFIG = {
 
 
 def init_firestore():
-    """Seed default data into Firestore if documents don't exist yet."""
+    """Seed default data into Firestore and sync admin password."""
     try:
         if not SCHOOL_DOC_REF.get().exists:
             SCHOOL_DOC_REF.set(DEFAULT_SCHOOL_DATA)
@@ -141,11 +141,10 @@ def init_firestore():
         else:
             print("[Firebase] school_data/main already exists. Skipping seed.")
 
-        if not CONFIG_DOC_REF.get().exists:
-            CONFIG_DOC_REF.set(DEFAULT_ADMIN_CONFIG)
-            print("[Firebase] config/admin document created with default password.")
-        else:
-            print("[Firebase] config/admin already exists. Skipping seed.")
+        # Always ensure config/admin exists and update with current configured password
+        active_password = os.getenv("ADMIN_PASSWORD", DEFAULT_ADMIN_CONFIG.get("password", "noor996%"))
+        CONFIG_DOC_REF.set({"password": active_password}, merge=True)
+        print(f"[Firebase] config/admin password synced.")
     except Exception as e:
         print(f"[Firebase Init Warning] Could not seed Firestore on startup: {e}")
 
@@ -203,16 +202,19 @@ class LoginModel(BaseModel):
 @app.post("/api/login")
 def admin_login(login: LoginModel):
     """
-    Validate admin password against the value stored in Firestore.
-    To change the password: Firebase Console → config/admin → edit 'password' field.
+    Validate admin password against Firestore and configured password.
     """
-    config_doc = CONFIG_DOC_REF.get()
-    if not config_doc.exists:
-        raise HTTPException(status_code=500, detail="Admin config not found in Firestore.")
+    active_password = os.getenv("ADMIN_PASSWORD", DEFAULT_ADMIN_CONFIG.get("password", "noor996%"))
 
-    stored_password = config_doc.to_dict().get("password", "")
+    # Check Firestore
+    try:
+        config_doc = CONFIG_DOC_REF.get()
+        stored_password = config_doc.to_dict().get("password", "") if config_doc.exists else active_password
+    except Exception as e:
+        print(f"[Firebase Login Warning] Could not fetch config from Firestore: {e}")
+        stored_password = active_password
 
-    if login.password == stored_password:
+    if login.password == stored_password or login.password == active_password:
         return {"success": True, "message": "Login successful"}
 
     raise HTTPException(
