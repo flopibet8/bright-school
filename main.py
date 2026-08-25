@@ -134,17 +134,20 @@ DEFAULT_ADMIN_CONFIG = {
 
 def init_firestore():
     """Seed default data into Firestore if documents don't exist yet."""
-    if not SCHOOL_DOC_REF.get().exists:
-        SCHOOL_DOC_REF.set(DEFAULT_SCHOOL_DATA)
-        print("[Firebase] school_data/main document created with default data.")
-    else:
-        print("[Firebase] school_data/main already exists. Skipping seed.")
+    try:
+        if not SCHOOL_DOC_REF.get().exists:
+            SCHOOL_DOC_REF.set(DEFAULT_SCHOOL_DATA)
+            print("[Firebase] school_data/main document created with default data.")
+        else:
+            print("[Firebase] school_data/main already exists. Skipping seed.")
 
-    if not CONFIG_DOC_REF.get().exists:
-        CONFIG_DOC_REF.set(DEFAULT_ADMIN_CONFIG)
-        print("[Firebase] config/admin document created with default password.")
-    else:
-        print("[Firebase] config/admin already exists. Skipping seed.")
+        if not CONFIG_DOC_REF.get().exists:
+            CONFIG_DOC_REF.set(DEFAULT_ADMIN_CONFIG)
+            print("[Firebase] config/admin document created with default password.")
+        else:
+            print("[Firebase] config/admin already exists. Skipping seed.")
+    except Exception as e:
+        print(f"[Firebase Init Warning] Could not seed Firestore on startup: {e}")
 
 
 init_firestore()
